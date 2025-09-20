@@ -1,11 +1,12 @@
-
 import React, { useState } from 'react';
-import type { Mesh } from 'three';
+// FIX: The scene ref now points to a Group instead of a Mesh.
+import type { Group } from 'three';
 import { OBJExporter } from '../utils/exporters';
 
 interface ExportPageProps {
   settings: Record<string, any>;
-  sceneRef: React.RefObject<Mesh>;
+  // FIX: The scene ref now points to a Group instead of a Mesh.
+  sceneRef: React.RefObject<Group>;
   onBack: () => void;
 }
 
@@ -66,61 +67,56 @@ const ExportPage: React.FC<ExportPageProps> = ({ settings, sceneRef, onBack }) =
 <body>
   <div id="root" style="width: 100vw; height: 100vh;"></div>
   <script type="module">
-    import React, { useMemo, useRef } from 'react';
+    import React, { useMemo, useRef, useLayoutEffect } from 'react';
     import ReactDOM from 'react-dom/client';
     import { Canvas, useFrame } from '@react-three/fiber';
-    import { Text3D, OrbitControls, Environment } from '@react-three/drei';
-    import { EffectComposer, Bloom, ChromaticAberration, Vignette, SMAA, GodRays, Noise, DepthOfField, Glitch, Scanline } from '@react-three/postprocessing';
-    import { CanvasTexture, Vector2, Mesh } from 'three';
+    import { Text3D, OrbitControls, Environment, Instances, Instance, Center } from '@react-three/drei';
+    import { EffectComposer, Bloom, ChromaticAberration, Vignette, SMAA, GodRays, Noise, DepthOfField, Glitch, Scanline, DotScreen } from '@react-three/postprocessing';
+    import { CanvasTexture, Vector2, Vector3, Mesh, Object3D, MeshPhysicalMaterial, Group } from 'three';
     import { BlendFunction, Resolution, KernelSize, GlitchMode } from 'postprocessing';
     
     const settings = ${settingsString};
 
-    const BACKGROUND_GLYPHS = '0123456789{}[]()</>|&*^%$#@!+=-_';
-    const useCascadingTextTexture = (cascadingText, textDensity) => {
-        const canvasRef = React.useRef();
-        const ctxRef = React.useRef();
-        const dropsRef = React.useRef([]);
-        const columnsRef = React.useRef(0);
-
+    const useCascadingTextTexture = (cascadingText, textDensity, glyphSet, fallSpeed, fadeFactor) => {
         const texture = React.useMemo(() => {
             const canvas = document.createElement('canvas');
             const size = 1024;
             canvas.width = size;
             canvas.height = size;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return new CanvasTexture(document.createElement('canvas'));
-
-            canvasRef.current = canvas;
-            ctxRef.current = ctx;
-
-            const fontSize = 18;
-            ctx.font = \`\${fontSize}px monospace\`;
-            columnsRef.current = Math.floor(size / fontSize);
-            const drops = [];
-            for (let x = 0; x < columnsRef.current; x++) {
-                drops[x] = Math.random() * (size / fontSize);
-            }
-            dropsRef.current = drops;
-
             return new CanvasTexture(canvas);
         }, []);
 
-        useFrame(() => {
-            const canvas = canvasRef.current;
-            const ctx = ctxRef.current;
-            const drops = dropsRef.current;
+        const animState = React.useRef({
+            ctx: texture.image.getContext('2d'),
+            drops: [],
+            columns: 0,
+            fontSize: 18,
+        }).current;
 
-            if (!canvas || !ctx) return;
+        React.useEffect(() => {
+          const size = 1024;
+          const fontSize = 18;
+          animState.columns = Math.floor(size / fontSize);
+          const drops = [];
+          for (let x = 0; x < animState.columns; x++) {
+              drops[x] = Math.random() * (size / fontSize);
+          }
+          animState.drops = drops;
+        }, []);
 
-            ctx.fillStyle = 'rgba(20, 20, 30, 0.05)';
+        useFrame((state, delta) => {
+            const { ctx, drops, fontSize, columns } = animState;
+            if (!ctx) return;
+            const canvas = ctx.canvas;
+
+            ctx.fillStyle = \`rgba(20, 20, 30, \${fadeFactor})\`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             const numGlyphs = Math.floor(canvas.width * textDensity * 0.1);
             if (Math.random() < 0.2) {
-                 ctx.font = '16px monospace';
+                ctx.font = '16px monospace';
                 for (let i = 0; i < numGlyphs; i++) {
-                    const char = BACKGROUND_GLYPHS[Math.floor(Math.random() * BACKGROUND_GLYPHS.length)];
+                    const char = glyphSet[Math.floor(Math.random() * glyphSet.length)];
                     const x = Math.random() * canvas.width;
                     const y = Math.random() * canvas.height;
                     const opacity = Math.random() * 0.1 + 0.05;
@@ -129,7 +125,6 @@ const ExportPage: React.FC<ExportPageProps> = ({ settings, sceneRef, onBack }) =
                 }
             }
 
-            const fontSize = 18;
             ctx.font = \`\${fontSize}px monospace\`;
             ctx.fillStyle = '#aef';
             const validCascadingText = cascadingText && cascadingText.length > 0 ? cascadingText : ' ';
@@ -144,7 +139,7 @@ const ExportPage: React.FC<ExportPageProps> = ({ settings, sceneRef, onBack }) =
                 if (y > canvas.height && Math.random() > 0.975) {
                     drops[i] = 0;
                 }
-                drops[i]++;
+                drops[i] += fallSpeed;
             }
 
             texture.needsUpdate = true;
@@ -152,10 +147,115 @@ const ExportPage: React.FC<ExportPageProps> = ({ settings, sceneRef, onBack }) =
 
         return texture;
     };
+    
+    const SurroundingParticles = ({ count, size, spread, animation, speed, gravity }) => {
+        const particles = useMemo(() => {
+          const temp = [];
+          for (let i = 0; i < count; i++) {
+            temp.push({ 
+                t: Math.random() * 100, 
+                speed: 0.01 + Math.random() / 200,
+                xFactor: -spread + Math.random() * spread * 2,
+                yFactor: -spread + Math.random() * spread * 2,
+                zFactor: -spread + Math.random() * spread * 2,
+                velocity: new Vector3(),
+                age: 0,
+                life: 0
+            });
+          }
+          return temp;
+        }, [count, spread]);
+
+        const ref = useRef();
+        const dummy = useMemo(() => new Object3D(), []);
+
+        const resetParticle = (particle) => {
+            particle.age = 0;
+            particle.life = 1 + Math.random() * 2;
+            dummy.position.set(0, 0, 0);
+            const phi = Math.random() * Math.PI * 2;
+            const theta = Math.acos(2 * Math.random() - 1);
+            const r = (0.5 + Math.random() * 0.5) * speed;
+            particle.velocity.set(
+                r * Math.sin(theta) * Math.cos(phi),
+                r * Math.cos(theta),
+                r * Math.sin(theta) * Math.sin(phi)
+            );
+        };
+
+        particles.forEach(resetParticle);
+
+        useFrame((state, delta) => {
+          if (!ref.current) return;
+          particles.forEach((particle, i) => {
+            if (animation === 'Sparks') {
+                if (particle.age >= particle.life) {
+                    resetParticle(particle);
+                }
+                particle.velocity.y -= gravity * delta;
+                dummy.position.addScaledVector(particle.velocity, delta);
+                particle.age += delta;
+            } else {
+              let { t, speed, xFactor, yFactor, zFactor } = particle;
+              t = particle.t += speed * delta * 20;
+              let x = 0, y = 0, z = 0;
+              switch(animation) {
+                case 'Orbit':
+                  const angle = t * 0.2;
+                  x = Math.cos(angle) * xFactor;
+                  y = Math.sin(angle * 0.5) * yFactor;
+                  z = Math.sin(angle) * zFactor;
+                  break;
+                case 'Random Drift':
+                   x = xFactor + Math.sin(t * 0.1) * 0.5;
+                   y = yFactor + Math.cos(t * 0.2) * 0.5;
+                   z = zFactor + Math.sin(t * 0.3) * 0.5;
+                   break;
+                case 'Static':
+                default:
+                   x = xFactor; y = yFactor; z = zFactor; break;
+              }
+              dummy.position.set(x, y, z);
+            }
+            
+            dummy.scale.setScalar(size);
+            dummy.updateMatrix();
+            ref.current.setMatrixAt(i, dummy.matrix);
+          });
+          ref.current.instanceMatrix.needsUpdate = true;
+        });
+
+        return React.createElement(Instances, { ref: ref, limit: count, range: count },
+          React.createElement('icosahedronGeometry', { args: [1, 0] }),
+          React.createElement('meshBasicMaterial', { color: '#ffffff', toneMapped: false })
+        );
+    };
 
     const CrystallineText = (props) => {
       const groupRef = useRef();
+      const textGroupRef = useRef();
+      const materialRef = useRef();
+
+      useLayoutEffect(() => {
+        if (textGroupRef.current) {
+          textGroupRef.current.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+                if (child.material.isMeshPhysicalMaterial) {
+                    materialRef.current = child.material;
+                }
+            }
+          });
+        }
+      }, [props.text, props.font, props.textHeight, props.facetDensity, props.bevelThickness, props.bevelSize]);
+
       useFrame(({ clock }, delta) => {
+        if (materialRef.current && materialRef.current.map) {
+          materialRef.current.map.offset.x += delta * 0.01;
+          materialRef.current.map.offset.y -= delta * 0.005;
+        }
+
         if (!groupRef.current) return;
         const t = clock.getElapsedTime();
         switch (props.animation) {
@@ -171,39 +271,51 @@ const ExportPage: React.FC<ExportPageProps> = ({ settings, sceneRef, onBack }) =
             groupRef.current.scale.set(scale, scale, scale);
             groupRef.current.rotation.y += delta * 0.05;
             break;
+          case 'Wobble':
+            groupRef.current.rotation.x = Math.sin(t * 1.5) * 0.1;
+            groupRef.current.rotation.y = Math.cos(t * 1.2) * 0.1;
+            groupRef.current.rotation.z = Math.sin(t * 1.8) * 0.1;
+            break;
+          case 'Wave':
+            groupRef.current.position.y = Math.sin(t * 2) * 0.3;
+            groupRef.current.rotation.x = Math.sin(t * 1.5) * 0.2;
+            break;
           case 'Static':
           default:
             break;
         }
       });
       return (
-        <mesh ref={groupRef} position={[0,0,0]} castShadow receiveShadow>
-          <Text3D font={props.font} size={3} height={1} curveSegments={Math.round(props.facetDensity)} bevelEnabled bevelThickness={0.1} bevelSize={0.05} bevelSegments={Math.round(props.facetDensity / 2)}>
-            {props.text}
-            <meshPhysicalMaterial map={props.texture} emissiveMap={props.texture} emissive={"#ffffff"} emissiveIntensity={0.5} transmission={1.0} roughness={props.roughness} thickness={props.thickness} ior={props.ior} specularIntensity={1} envMapIntensity={1} metalness={props.metalness} color={props.color}/>
-          </Text3D>
-        </mesh>
+        <group ref={groupRef} position={[0,0,0]}>
+          <Center>
+            <Text3D ref={textGroupRef} font={props.font} size={3} height={props.textHeight} curveSegments={Math.round(props.facetDensity)} bevelEnabled bevelThickness={props.bevelThickness} bevelSize={props.bevelSize} bevelSegments={Math.round(props.facetDensity / 2)}>
+              {props.text}
+              <meshPhysicalMaterial map={props.texture} emissiveMap={props.texture} emissive={"#ffffff"} emissiveIntensity={0.5} transmission={1.0} roughness={props.roughness} thickness={props.thickness} ior={props.ior} specularIntensity={1} envMapIntensity={1} metalness={props.metalness} color={props.color}/>
+            </Text3D>
+          </Center>
+        </group>
       );
     };
 
     const App = () => {
-      const texture = useCascadingTextTexture(settings.cascadingText, settings.textDensity);
+      const texture = useCascadingTextTexture(settings.cascadingText, settings.textDensity, settings.textureGlyphSet, settings.textureFallSpeed, settings.textureFadeFactor);
       const aberrationOffset = useMemo(() => new Vector2(settings.chromaticAberrationOffset, settings.chromaticAberrationOffset), [settings.chromaticAberrationOffset]);
       const glitchStrength = useMemo(() => new Vector2(settings.glitchIntensity, settings.glitchIntensity * 2), [settings.glitchIntensity]);
       const godRaysLightSourceRef = React.useRef();
 
       return (
-        <Canvas shadows gl={{ antialias: false }} camera={{ position: [0, 0, 8], fov: 50 }}>
+        <Canvas shadows gl={{ antialias: false }} dpr={[1, 2]} camera={{ position: [0, 0, 8], fov: 50 }}>
           <color attach="background" args={['#101015']} />
           <ambientLight intensity={0.5} />
-          <pointLight position={[10, 10, 10]} intensity={1.5} color="#87ceeb" />
-          <pointLight position={[-10, -10, -5]} intensity={1} color="#ff8c00" />
+          <pointLight position={[10, 10, 10]} intensity={settings.light1Intensity} color={settings.light1Color} />
+          <pointLight position={[-10, -10, -5]} intensity={settings.light2Intensity} color={settings.light2Color} />
           <spotLight position={[0, 15, 0]} intensity={2} angle={0.3} penumbra={1} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} />
           <mesh ref={godRaysLightSourceRef} position={[0, 0, -5]}><sphereGeometry args={[1, 16, 16]} /><meshBasicMaterial color="white" visible={false} /></mesh>
           <CrystallineText {...settings} texture={texture} />
+          {settings.particlesEnabled && <SurroundingParticles count={settings.particleCount} size={settings.particleSize} spread={settings.particleSpread} animation={settings.particleAnimation} speed={settings.particleSpeed} gravity={settings.particleGravity} />}
           <Environment preset={settings.envPreset} />
           <EffectComposer>
-            <Bloom luminanceThreshold={0.2} luminanceSmoothing={0.9} height={300} intensity={settings.bloomIntensity} />
+            <Bloom luminanceThreshold={0.2} luminanceSmoothing={0.9} height={512} intensity={settings.bloomIntensity} />
             <ChromaticAberration offset={aberrationOffset} />
             <Vignette eskil={false} offset={0.1} darkness={settings.vignetteDarkness} />
             {godRaysLightSourceRef.current && <GodRays sun={godRaysLightSourceRef.current} blendFunction={BlendFunction.SCREEN} samples={30} density={0.97} decay={0.97} weight={0.6 * settings.godRaysIntensity} exposure={0.4 * settings.godRaysIntensity} clampMax={1} kernelSize={KernelSize.SMALL} blur={true} />}
@@ -211,6 +323,7 @@ const ExportPage: React.FC<ExportPageProps> = ({ settings, sceneRef, onBack }) =
             <DepthOfField focusDistance={0.01 * settings.dofIntensity} focalLength={0.2 * settings.dofIntensity} bokehScale={4 * settings.dofIntensity} height={480} />
             <Glitch delay={new Vector2(1.5, 3.5)} duration={new Vector2(0.2, 0.5)} strength={glitchStrength} mode={GlitchMode.SPORADIC} active={settings.glitchIntensity > 0.0001} ratio={0.5} />
             <Scanline blendFunction={BlendFunction.OVERLAY} density={settings.scanlineIntensity * 5} opacity={settings.scanlineIntensity * 0.2} />
+            <DotScreen blendFunction={BlendFunction.NORMAL} angle={Math.PI * 0.5} scale={1.0} opacity={settings.dotScreenIntensity} />
             <SMAA />
           </EffectComposer>
           <OrbitControls minDistance={3} maxDistance={20} enablePan={false} />

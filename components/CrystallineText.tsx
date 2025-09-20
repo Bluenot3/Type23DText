@@ -1,30 +1,41 @@
-
 import React, { useRef, useLayoutEffect, useImperativeHandle } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Text3D } from '@react-three/drei';
+import { Text3D, Center } from '@react-three/drei';
 import { useCascadingTextTexture } from '../hooks/useCascadingTextTexture';
-import type { Mesh } from 'three';
+import { Mesh, MeshPhysicalMaterial, Group } from 'three';
 
 interface CrystallineTextProps {
   text: string;
   font: string;
+  height: number;
+  bevelThickness: number;
+  bevelSize: number;
   animation: string;
   ior: number;
   facetDensity: number;
   cascadingText: string;
   textDensity: number;
+  textureGlyphSet: string;
+  textureFallSpeed: number;
+  textureFadeFactor: number;
   color: string;
   roughness: number;
   metalness: number;
   thickness: number;
 }
 
-const CrystallineText = React.forwardRef<Mesh, CrystallineTextProps>(({ 
-  text, font, animation, ior, facetDensity, cascadingText, textDensity, color, roughness, metalness, thickness 
+// FIX: The component's root is a group, so forward a ref to a Group, not a Mesh.
+const CrystallineText = React.forwardRef<Group, CrystallineTextProps>(({ 
+  text, font, height, bevelThickness, bevelSize, animation, ior, facetDensity, cascadingText, textDensity, 
+  textureGlyphSet, textureFallSpeed, textureFadeFactor, color, roughness, metalness, thickness 
 }, ref) => {
-  const groupRef = useRef<Mesh>(null!);
+  // FIX: The root element is a group, so this ref should be for a Group.
+  const groupRef = useRef<Group>(null!);
+  const textGroupRef = useRef<Group>(null!);
+  const materialRef = useRef<MeshPhysicalMaterial>();
+
   useImperativeHandle(ref, () => groupRef.current!, []);
-  const texture = useCascadingTextTexture(cascadingText, textDensity);
+  const texture = useCascadingTextTexture(cascadingText, textDensity, textureGlyphSet, textureFallSpeed, textureFadeFactor);
 
   useLayoutEffect(() => {
     if (groupRef.current) {
@@ -34,7 +45,27 @@ const CrystallineText = React.forwardRef<Mesh, CrystallineTextProps>(({
     }
   }, [animation]);
 
+  useLayoutEffect(() => {
+    if (textGroupRef.current) {
+      textGroupRef.current.traverse(child => {
+        // FIX: Apply shadow properties to child meshes and find the material.
+        if (child instanceof Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          if (child.material instanceof MeshPhysicalMaterial) {
+            materialRef.current = child.material;
+          }
+        }
+      });
+    }
+  }, [text, font, height, facetDensity, bevelThickness, bevelSize]); // Re-find material if geometry changes
+
   useFrame(({ clock }, delta) => {
+    if (materialRef.current && materialRef.current.map) {
+        materialRef.current.map.offset.x += delta * 0.01;
+        materialRef.current.map.offset.y -= delta * 0.005;
+    }
+
     if (groupRef.current) {
       const t = clock.getElapsedTime();
       switch (animation) {
@@ -50,6 +81,15 @@ const CrystallineText = React.forwardRef<Mesh, CrystallineTextProps>(({
           groupRef.current.scale.set(scale, scale, scale);
           groupRef.current.rotation.y += delta * 0.05;
           break;
+        case 'Wobble':
+          groupRef.current.rotation.x = Math.sin(t * 1.5) * 0.1;
+          groupRef.current.rotation.y = Math.cos(t * 1.2) * 0.1;
+          groupRef.current.rotation.z = Math.sin(t * 1.8) * 0.1;
+          break;
+        case 'Wave':
+          groupRef.current.position.y = Math.sin(t * 2) * 0.3;
+          groupRef.current.rotation.x = Math.sin(t * 1.5) * 0.2;
+          break;
         case 'Static':
         default:
           break;
@@ -58,35 +98,39 @@ const CrystallineText = React.forwardRef<Mesh, CrystallineTextProps>(({
   });
 
   return (
-    <mesh ref={groupRef} position={[0, 0, 0]} castShadow receiveShadow>
-      <Text3D
-        key={`${font}-${text}`}
-        font={font}
-        size={3}
-        height={1}
-        curveSegments={Math.round(facetDensity)}
-        bevelEnabled
-        bevelThickness={0.1}
-        bevelSize={0.05}
-        bevelSegments={Math.round(facetDensity / 2)}
-      >
-        {text}
-        <meshPhysicalMaterial
-          map={texture}
-          emissiveMap={texture}
-          emissive={"#ffffff"}
-          emissiveIntensity={0.5}
-          transmission={1.0}
-          roughness={roughness}
-          thickness={thickness}
-          ior={ior}
-          specularIntensity={1}
-          envMapIntensity={1}
-          metalness={metalness}
-          color={color}
-        />
-      </Text3D>
-    </mesh>
+    // FIX: The root should be a group, not a mesh without geometry.
+    <group ref={groupRef} position={[0, 0, 0]}>
+      <Center>
+        <Text3D
+          ref={textGroupRef}
+          key={`${font}-${text}`}
+          font={font}
+          size={3}
+          height={height}
+          curveSegments={Math.round(facetDensity)}
+          bevelEnabled
+          bevelThickness={bevelThickness}
+          bevelSize={bevelSize}
+          bevelSegments={Math.round(facetDensity / 2)}
+        >
+          {text}
+          <meshPhysicalMaterial
+            map={texture}
+            emissiveMap={texture}
+            emissive={"#ffffff"}
+            emissiveIntensity={0.5}
+            transmission={1.0}
+            roughness={roughness}
+            thickness={thickness}
+            ior={ior}
+            specularIntensity={1}
+            envMapIntensity={1}
+            metalness={metalness}
+            color={color}
+          />
+        </Text3D>
+      </Center>
+    </group>
   );
 });
 

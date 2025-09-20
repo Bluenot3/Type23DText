@@ -1,6 +1,5 @@
-
 import React, { useMemo } from 'react';
-import { EffectComposer, Bloom, ChromaticAberration, Vignette, SMAA, GodRays, Noise, DepthOfField, Glitch, Scanline } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, ChromaticAberration, Vignette, SMAA, GodRays, Noise, DepthOfField, Glitch, Scanline, DotScreen } from '@react-three/postprocessing';
 import { Vector2, Mesh } from 'three';
 import { BlendFunction, Resolution, KernelSize, GlitchMode } from 'postprocessing';
 
@@ -14,6 +13,7 @@ interface EffectsProps {
   dofIntensity: number;
   glitchIntensity: number;
   scanlineIntensity: number;
+  dotScreenIntensity: number;
 }
 
 const Effects: React.FC<EffectsProps> = ({ 
@@ -25,7 +25,8 @@ const Effects: React.FC<EffectsProps> = ({
   godRaysLightSourceRef,
   dofIntensity,
   glitchIntensity,
-  scanlineIntensity
+  scanlineIntensity,
+  dotScreenIntensity
 }) => {
   const aberrationOffset = useMemo(() => new Vector2(chromaticAberrationOffset, chromaticAberrationOffset), [chromaticAberrationOffset]);
   const glitchStrength = useMemo(() => new Vector2(glitchIntensity, glitchIntensity * 2), [glitchIntensity]);
@@ -35,7 +36,7 @@ const Effects: React.FC<EffectsProps> = ({
       <Bloom 
         luminanceThreshold={0.2} 
         luminanceSmoothing={0.9} 
-        height={300} 
+        height={512} 
         intensity={bloomIntensity} 
       />
       <ChromaticAberration 
@@ -85,6 +86,12 @@ const Effects: React.FC<EffectsProps> = ({
         blendFunction={BlendFunction.OVERLAY}
         density={scanlineIntensity * 5}
         opacity={scanlineIntensity * 0.2}
+      />
+      <DotScreen
+        blendFunction={BlendFunction.NORMAL}
+        angle={Math.PI * 0.5}
+        scale={1.0}
+        opacity={dotScreenIntensity}
       />
       <SMAA />
     </EffectComposer>
