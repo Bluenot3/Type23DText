@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { EffectComposer, Bloom, ChromaticAberration, Vignette, SMAA, GodRays, Noise, DepthOfField, Glitch, Scanline, DotScreen } from '@react-three/postprocessing';
+import { EffectComposer, Bloom, ChromaticAberration, Vignette, SMAA, GodRays, Noise, DepthOfField, Glitch, Scanline, DotScreen, Pixelation, Grid } from '@react-three/postprocessing';
 import { Vector2, Mesh } from 'three';
 import { BlendFunction, Resolution, KernelSize, GlitchMode } from 'postprocessing';
 
@@ -14,6 +14,9 @@ interface EffectsProps {
   glitchIntensity: number;
   scanlineIntensity: number;
   dotScreenIntensity: number;
+  pixelation: number;
+  gridScale: number;
+  gridLineWidth: number;
 }
 
 const Effects: React.FC<EffectsProps> = ({ 
@@ -26,7 +29,10 @@ const Effects: React.FC<EffectsProps> = ({
   dofIntensity,
   glitchIntensity,
   scanlineIntensity,
-  dotScreenIntensity
+  dotScreenIntensity,
+  pixelation,
+  gridScale,
+  gridLineWidth
 }) => {
   const aberrationOffset = useMemo(() => new Vector2(chromaticAberrationOffset, chromaticAberrationOffset), [chromaticAberrationOffset]);
   const glitchStrength = useMemo(() => new Vector2(glitchIntensity, glitchIntensity * 2), [glitchIntensity]);
@@ -93,6 +99,8 @@ const Effects: React.FC<EffectsProps> = ({
         scale={1.0}
         opacity={dotScreenIntensity}
       />
+      {pixelation > 0 && <Pixelation granularity={pixelation} />}
+      {gridScale > 0 && <Grid scale={gridScale} lineWidth={gridLineWidth} blendFunction={BlendFunction.OVERLAY} />}
       <SMAA />
     </EffectComposer>
   );

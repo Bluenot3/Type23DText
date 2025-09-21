@@ -1,10 +1,13 @@
+
 import React, { useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
 import CrystallineText from './CrystallineText';
 import Effects from './Effects';
 import SurroundingParticles from './SurroundingParticles';
-// FIX: The forwarded ref now points to a Group instead of a Mesh.
+import InteractiveEffects from './InteractiveEffects';
+import BackgroundSymbols from './BackgroundSymbols';
+import ScannerEffect from './ScannerEffect';
 import type { Mesh, Group } from 'three';
 
 interface SceneProps {
@@ -20,6 +23,10 @@ interface SceneProps {
   roughness: number;
   metalness: number;
   thickness: number;
+  materialDispersion: number;
+  sheenEnabled: boolean;
+  sheenColor: string;
+  sheenRoughness: number;
   cascadingText: string;
   textDensity: number;
   textureGlyphSet: string;
@@ -32,6 +39,19 @@ interface SceneProps {
   particleAnimation: string;
   particleSpeed: number;
   particleGravity: number;
+  backgroundSymbolsEnabled: boolean;
+  backgroundSymbolCount: number;
+  backgroundSymbolSpread: number;
+  backgroundSymbolSize: number;
+  backgroundSymbolColor: string;
+  backgroundLayer2Enabled: boolean;
+  backgroundLayer2Count: number;
+  backgroundLayer2Spread: number;
+  backgroundLayer2Size: number;
+  scannerEffectEnabled: boolean;
+  scannerColor: string;
+  scannerSpeed: number;
+  scannerDensity: number;
   light1Color: string;
   light1Intensity: number;
   light2Color: string;
@@ -46,25 +66,36 @@ interface SceneProps {
   glitchIntensity: number;
   scanlineIntensity: number;
   dotScreenIntensity: number;
+  pixelation: number;
+  gridScale: number;
+  gridLineWidth: number;
+  interactiveEffectsEnabled: boolean;
+  interactiveEffectType: string;
+  effectColor1: string;
+  effectColor2: string;
 }
 
-// FIX: The forwarded ref now points to a Group instead of a Mesh.
 const Scene = React.forwardRef<Group, SceneProps>(({ 
   text, font, textHeight, bevelThickness, bevelSize, animation, ior, facetDensity,
-  color, roughness, metalness, thickness, envPreset, cascadingText, textDensity,
-  textureGlyphSet, textureFallSpeed, textureFadeFactor, particlesEnabled, particleCount,
-  particleSize, particleSpread, particleAnimation, particleSpeed, particleGravity,
+  color, roughness, metalness, thickness, materialDispersion, sheenEnabled, sheenColor, sheenRoughness,
+  envPreset, cascadingText, textDensity, textureGlyphSet, textureFallSpeed, textureFadeFactor, particlesEnabled,
+  particleCount, particleSize, particleSpread, particleAnimation, particleSpeed, particleGravity,
+  backgroundSymbolsEnabled, backgroundSymbolCount, backgroundSymbolSpread, backgroundSymbolSize, backgroundSymbolColor,
+  backgroundLayer2Enabled, backgroundLayer2Count, backgroundLayer2Spread, backgroundLayer2Size,
+  scannerEffectEnabled, scannerColor, scannerSpeed, scannerDensity,
   light1Color, light1Intensity, light2Color, light2Intensity, bloomIntensity, 
   chromaticAberrationOffset, vignetteDarkness, godRaysIntensity, noiseIntensity, 
-  dofIntensity, glitchIntensity, scanlineIntensity, dotScreenIntensity
+  dofIntensity, glitchIntensity, scanlineIntensity, dotScreenIntensity,
+  pixelation, gridScale, gridLineWidth,
+  interactiveEffectsEnabled, interactiveEffectType, effectColor1, effectColor2
 }, ref) => {
   const godRaysLightSourceRef = useRef<Mesh>(null!);
 
   return (
     <Canvas
       shadows
-      gl={{ antialias: false, preserveDrawingBuffer: true }} // SMAA will handle anti-aliasing in Effects
-      dpr={[1, 2]} // Use device pixel ratio, up to 2x, for sharper rendering on high-res screens
+      gl={{ antialias: false, preserveDrawingBuffer: true }}
+      dpr={[1, 2]}
       camera={{ position: [0, 0, 8], fov: 50 }}
     >
       <color attach="background" args={['#101015']} />
@@ -83,11 +114,38 @@ const Scene = React.forwardRef<Group, SceneProps>(({
         shadow-mapSize-height={2048}
       />
 
-      {/* God-rays light source - now invisible */}
       <mesh ref={godRaysLightSourceRef} position={[0, 0, -5]}>
         <sphereGeometry args={[1, 16, 16]} />
         <meshBasicMaterial color="white" visible={false} />
       </mesh>
+
+      {scannerEffectEnabled && (
+        <ScannerEffect 
+            color={scannerColor}
+            speed={scannerSpeed}
+            density={scannerDensity}
+        />
+      )}
+
+      {backgroundLayer2Enabled && (
+        <group position={[0, 0, -5]}>
+            <BackgroundSymbols 
+              count={backgroundLayer2Count}
+              spread={backgroundLayer2Spread}
+              size={backgroundLayer2Size}
+              color={backgroundSymbolColor}
+            />
+        </group>
+      )}
+
+      {backgroundSymbolsEnabled && (
+        <BackgroundSymbols 
+          count={backgroundSymbolCount}
+          spread={backgroundSymbolSpread}
+          size={backgroundSymbolSize}
+          color={backgroundSymbolColor}
+        />
+      )}
 
       <CrystallineText 
         ref={ref}
@@ -108,6 +166,10 @@ const Scene = React.forwardRef<Group, SceneProps>(({
         roughness={roughness}
         metalness={metalness}
         thickness={thickness}
+        materialDispersion={materialDispersion}
+        sheenEnabled={sheenEnabled}
+        sheenColor={sheenColor}
+        sheenRoughness={sheenRoughness}
       />
 
       {particlesEnabled && (
@@ -121,6 +183,14 @@ const Scene = React.forwardRef<Group, SceneProps>(({
         />
       )}
       
+      {interactiveEffectsEnabled && (
+        <InteractiveEffects
+            effectType={interactiveEffectType}
+            effectColor1={effectColor1}
+            effectColor2={effectColor2}
+        />
+      )}
+
       <Environment preset={envPreset as any} />
       
       <Effects 
@@ -134,6 +204,9 @@ const Scene = React.forwardRef<Group, SceneProps>(({
         glitchIntensity={glitchIntensity}
         scanlineIntensity={scanlineIntensity}
         dotScreenIntensity={dotScreenIntensity}
+        pixelation={pixelation}
+        gridScale={gridScale}
+        gridLineWidth={gridLineWidth}
       />
       
       <OrbitControls 

@@ -22,17 +22,20 @@ interface CrystallineTextProps {
   roughness: number;
   metalness: number;
   thickness: number;
+  materialDispersion: number;
+  sheenEnabled: boolean;
+  sheenColor: string;
+  sheenRoughness: number;
 }
 
-// FIX: The component's root is a group, so forward a ref to a Group, not a Mesh.
 const CrystallineText = React.forwardRef<Group, CrystallineTextProps>(({ 
   text, font, height, bevelThickness, bevelSize, animation, ior, facetDensity, cascadingText, textDensity, 
-  textureGlyphSet, textureFallSpeed, textureFadeFactor, color, roughness, metalness, thickness 
+  textureGlyphSet, textureFallSpeed, textureFadeFactor, color, roughness, metalness, thickness,
+  materialDispersion, sheenEnabled, sheenColor, sheenRoughness
 }, ref) => {
-  // FIX: The root element is a group, so this ref should be for a Group.
   const groupRef = useRef<Group>(null!);
   const textGroupRef = useRef<Group>(null!);
-  const materialRef = useRef<MeshPhysicalMaterial>();
+  const materialRef = useRef<MeshPhysicalMaterial | null>(null);
 
   useImperativeHandle(ref, () => groupRef.current!, []);
   const texture = useCascadingTextTexture(cascadingText, textDensity, textureGlyphSet, textureFallSpeed, textureFadeFactor);
@@ -48,7 +51,6 @@ const CrystallineText = React.forwardRef<Group, CrystallineTextProps>(({
   useLayoutEffect(() => {
     if (textGroupRef.current) {
       textGroupRef.current.traverse(child => {
-        // FIX: Apply shadow properties to child meshes and find the material.
         if (child instanceof Mesh) {
           child.castShadow = true;
           child.receiveShadow = true;
@@ -58,7 +60,7 @@ const CrystallineText = React.forwardRef<Group, CrystallineTextProps>(({
         }
       });
     }
-  }, [text, font, height, facetDensity, bevelThickness, bevelSize]); // Re-find material if geometry changes
+  }, [text, font, height, facetDensity, bevelThickness, bevelSize]);
 
   useFrame(({ clock }, delta) => {
     if (materialRef.current && materialRef.current.map) {
@@ -98,11 +100,12 @@ const CrystallineText = React.forwardRef<Group, CrystallineTextProps>(({
   });
 
   return (
-    // FIX: The root should be a group, not a mesh without geometry.
     <group ref={groupRef} position={[0, 0, 0]}>
       <Center>
         <Text3D
-          ref={textGroupRef}
+          // FIX: Cast ref to 'any' to bypass incorrect type definition from the library.
+          // The Text3D component returns a Group, but its ref is typed as a Mesh.
+          ref={textGroupRef as any}
           key={`${font}-${text}`}
           font={font}
           size={3}
@@ -127,6 +130,13 @@ const CrystallineText = React.forwardRef<Group, CrystallineTextProps>(({
             envMapIntensity={1}
             metalness={metalness}
             color={color}
+            // New Advanced Material Properties
+            iridescence={materialDispersion > 0 ? 1 : 0}
+            iridescenceIOR={1 + materialDispersion * 1.3}
+            iridescenceThicknessRange={[0, 1400 * materialDispersion]}
+            sheen={sheenEnabled ? 0.8 : 0}
+            sheenColor={sheenColor}
+            sheenRoughness={sheenRoughness}
           />
         </Text3D>
       </Center>

@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { FONT_LIST, ENV_LIST, ANIMATION_LIST, MATERIAL_PRESETS, TEXTURE_GLYPH_PRESETS, PARTICLE_ANIMATION_LIST } from '../App';
+import { FONT_LIST, ENV_LIST, ANIMATION_LIST, MATERIAL_PRESETS, TEXTURE_GLYPH_PRESETS, PARTICLE_ANIMATION_LIST, INTERACTIVE_EFFECT_LIST } from '../App';
 
 interface ControlsProps {
   text: string;
@@ -28,6 +29,14 @@ interface ControlsProps {
   setMetalness: React.Dispatch<React.SetStateAction<number>>;
   thickness: number;
   setThickness: React.Dispatch<React.SetStateAction<number>>;
+  materialDispersion: number;
+  setMaterialDispersion: React.Dispatch<React.SetStateAction<number>>;
+  sheenEnabled: boolean;
+  setSheenEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  sheenColor: string;
+  setSheenColor: React.Dispatch<React.SetStateAction<string>>;
+  sheenRoughness: number;
+  setSheenRoughness: React.Dispatch<React.SetStateAction<number>>;
   envPreset: string;
   setEnvPreset: React.Dispatch<React.SetStateAction<string>>;
   cascadingText: string;
@@ -56,6 +65,32 @@ interface ControlsProps {
   setParticleSpeed: React.Dispatch<React.SetStateAction<number>>;
   particleGravity: number;
   setParticleGravity: React.Dispatch<React.SetStateAction<number>>;
+  backgroundSymbolsEnabled: boolean;
+  setBackgroundSymbolsEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  backgroundSymbolCount: number;
+  setBackgroundSymbolCount: React.Dispatch<React.SetStateAction<number>>;
+  backgroundSymbolSpread: number;
+  setBackgroundSymbolSpread: React.Dispatch<React.SetStateAction<number>>;
+  backgroundSymbolSize: number;
+  setBackgroundSymbolSize: React.Dispatch<React.SetStateAction<number>>;
+  backgroundSymbolColor: string;
+  setBackgroundSymbolColor: React.Dispatch<React.SetStateAction<string>>;
+  backgroundLayer2Enabled: boolean;
+  setBackgroundLayer2Enabled: React.Dispatch<React.SetStateAction<boolean>>;
+  backgroundLayer2Count: number;
+  setBackgroundLayer2Count: React.Dispatch<React.SetStateAction<number>>;
+  backgroundLayer2Spread: number;
+  setBackgroundLayer2Spread: React.Dispatch<React.SetStateAction<number>>;
+  backgroundLayer2Size: number;
+  setBackgroundLayer2Size: React.Dispatch<React.SetStateAction<number>>;
+  scannerEffectEnabled: boolean;
+  setScannerEffectEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  scannerColor: string;
+  setScannerColor: React.Dispatch<React.SetStateAction<string>>;
+  scannerSpeed: number;
+  setScannerSpeed: React.Dispatch<React.SetStateAction<number>>;
+  scannerDensity: number;
+  setScannerDensity: React.Dispatch<React.SetStateAction<number>>;
   light1Color: string;
   setLight1Color: React.Dispatch<React.SetStateAction<string>>;
   light1Intensity: number;
@@ -82,6 +117,20 @@ interface ControlsProps {
   setScanlineIntensity: React.Dispatch<React.SetStateAction<number>>;
   dotScreenIntensity: number;
   setDotScreenIntensity: React.Dispatch<React.SetStateAction<number>>;
+  pixelation: number;
+  setPixelation: React.Dispatch<React.SetStateAction<number>>;
+  gridScale: number;
+  setGridScale: React.Dispatch<React.SetStateAction<number>>;
+  gridLineWidth: number;
+  setGridLineWidth: React.Dispatch<React.SetStateAction<number>>;
+  interactiveEffectsEnabled: boolean;
+  setInteractiveEffectsEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  interactiveEffectType: string;
+  setInteractiveEffectType: React.Dispatch<React.SetStateAction<string>>;
+  effectColor1: string;
+  setEffectColor1: React.Dispatch<React.SetStateAction<string>>;
+  effectColor2: string;
+  setEffectColor2: React.Dispatch<React.SetStateAction<string>>;
   onExport: () => void;
 }
 
@@ -186,26 +235,19 @@ const Controls: React.FC<ControlsProps> = (props) => {
                 <ControlSlider label="Thickness" value={props.thickness} onChange={(e) => props.setThickness(parseFloat(e.target.value))} min={0} max={5} step={0.05} />
                 <ControlSlider label="Index of Refraction" value={props.ior} onChange={(e) => props.setIor(parseFloat(e.target.value))} min={1.0} max={2.4} step={0.01} />
                 <ControlSlider label="Facet Density" value={props.facetDensity} onChange={(e) => props.setFacetDensity(parseInt(e.target.value, 10))} min={1} max={24} step={1} />
-            </Section>
-
-            <Section title="Surrounding Particles">
-              <Toggle label="Enable Particles" checked={props.particlesEnabled} onChange={e => props.setParticlesEnabled(e.target.checked)} />
-              <ControlSlider label="Count" value={props.particleCount} onChange={e => props.setParticleCount(parseInt(e.target.value, 10))} min={0} max={1000} step={10} />
-              <ControlSlider label="Size" value={props.particleSize} onChange={e => props.setParticleSize(parseFloat(e.target.value))} min={0.01} max={0.5} step={0.01} />
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Animation</label>
-                <select value={props.particleAnimation} onChange={(e) => props.setParticleAnimation(e.target.value)} className="w-full bg-gray-900/50 text-white border border-white/20 rounded-md px-3 py-2 text-sm focus:ring-sky-500 focus:border-sky-500">
-                  {PARTICLE_ANIMATION_LIST.map((name) => (<option key={name} value={name}>{name}</option>))}
-                </select>
-              </div>
-              {props.particleAnimation === 'Sparks' ? (
-                <>
-                  <ControlSlider label="Spark Speed" value={props.particleSpeed} onChange={e => props.setParticleSpeed(parseFloat(e.target.value))} min={1} max={50} step={0.5} />
-                  <ControlSlider label="Spark Gravity" value={props.particleGravity} onChange={e => props.setParticleGravity(parseFloat(e.target.value))} min={0} max={5} step={0.1} />
-                </>
-              ) : (
-                <ControlSlider label="Spread" value={props.particleSpread} onChange={e => props.setParticleSpread(parseFloat(e.target.value))} min={1} max={20} step={0.1} />
-              )}
+                <ControlSlider label="Material Dispersion" value={props.materialDispersion} onChange={(e) => props.setMaterialDispersion(parseFloat(e.target.value))} min={0} max={1} step={0.01} />
+                <div className="space-y-2 pt-2 border-t border-white/10">
+                    <Toggle label="Enable Sheen" checked={props.sheenEnabled} onChange={e => props.setSheenEnabled(e.target.checked)} />
+                    {props.sheenEnabled && (
+                        <>
+                            <div className="flex justify-between items-center">
+                                <label className="text-sm font-medium text-gray-300">Sheen Color</label>
+                                <input type="color" value={props.sheenColor} onChange={e => props.setSheenColor(e.target.value)} className="w-8 h-8 p-0 border-none rounded bg-transparent" />
+                            </div>
+                            <ControlSlider label="Sheen Roughness" value={props.sheenRoughness} onChange={(e) => props.setSheenRoughness(parseFloat(e.target.value))} min={0} max={1} step={0.01} />
+                        </>
+                    )}
+                </div>
             </Section>
 
             <Section title="Texture Generation">
@@ -231,6 +273,75 @@ const Controls: React.FC<ControlsProps> = (props) => {
                  <ControlSlider label="Fade Factor" value={props.textureFadeFactor} onChange={(e) => props.setTextureFadeFactor(parseFloat(e.target.value))} min={0.01} max={0.2} step={0.005} />
             </Section>
             
+            <Section title="Surrounding Particles">
+              <Toggle label="Enable Particles" checked={props.particlesEnabled} onChange={e => props.setParticlesEnabled(e.target.checked)} />
+              <ControlSlider label="Count" value={props.particleCount} onChange={e => props.setParticleCount(parseInt(e.target.value, 10))} min={0} max={1000} step={10} />
+              <ControlSlider label="Size" value={props.particleSize} onChange={e => props.setParticleSize(parseFloat(e.target.value))} min={0.01} max={0.5} step={0.01} />
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Animation</label>
+                <select value={props.particleAnimation} onChange={(e) => props.setParticleAnimation(e.target.value)} className="w-full bg-gray-900/50 text-white border border-white/20 rounded-md px-3 py-2 text-sm focus:ring-sky-500 focus:border-sky-500">
+                  {PARTICLE_ANIMATION_LIST.map((name) => (<option key={name} value={name}>{name}</option>))}
+                </select>
+              </div>
+              {props.particleAnimation === 'Sparks' ? (
+                <>
+                  <ControlSlider label="Spark Speed" value={props.particleSpeed} onChange={e => props.setParticleSpeed(parseFloat(e.target.value))} min={1} max={50} step={0.5} />
+                  <ControlSlider label="Spark Gravity" value={props.particleGravity} onChange={e => props.setParticleGravity(parseFloat(e.target.value))} min={0} max={5} step={0.1} />
+                </>
+              ) : (
+                <ControlSlider label="Spread" value={props.particleSpread} onChange={e => props.setParticleSpread(parseFloat(e.target.value))} min={1} max={20} step={0.1} />
+              )}
+            </Section>
+
+            <Section title="Background Symbols">
+              <Toggle label="Enable Symbols" checked={props.backgroundSymbolsEnabled} onChange={e => props.setBackgroundSymbolsEnabled(e.target.checked)} />
+              <ControlSlider label="Count" value={props.backgroundSymbolCount} onChange={e => props.setBackgroundSymbolCount(parseInt(e.target.value, 10))} min={100} max={2000} step={50} />
+              <ControlSlider label="Spread" value={props.backgroundSymbolSpread} onChange={e => props.setBackgroundSymbolSpread(parseFloat(e.target.value))} min={5} max={50} step={1} />
+              <ControlSlider label="Size" value={props.backgroundSymbolSize} onChange={e => props.setBackgroundSymbolSize(parseFloat(e.target.value))} min={0.05} max={1} step={0.01} />
+              <div className="flex justify-between items-center">
+                  <label className="text-sm font-medium text-gray-300">Color</label>
+                  <input type="color" value={props.backgroundSymbolColor} onChange={e => props.setBackgroundSymbolColor(e.target.value)} className="w-8 h-8 p-0 border-none rounded bg-transparent" />
+              </div>
+              <div className="space-y-2 pt-4 mt-4 border-t border-white/20">
+                  <Toggle label="Enable Far Layer" checked={props.backgroundLayer2Enabled} onChange={e => props.setBackgroundLayer2Enabled(e.target.checked)} />
+                  <ControlSlider label="Far Count" value={props.backgroundLayer2Count} onChange={e => props.setBackgroundLayer2Count(parseInt(e.target.value, 10))} min={100} max={4000} step={50} />
+                  <ControlSlider label="Far Spread" value={props.backgroundLayer2Spread} onChange={e => props.setBackgroundLayer2Spread(parseFloat(e.target.value))} min={5} max={50} step={1} />
+                  <ControlSlider label="Far Size" value={props.backgroundLayer2Size} onChange={e => props.setBackgroundLayer2Size(parseFloat(e.target.value))} min={0.02} max={0.5} step={0.01} />
+              </div>
+            </Section>
+
+            <Section title="Scanner Effect">
+                <Toggle label="Enable Scanner" checked={props.scannerEffectEnabled} onChange={e => props.setScannerEffectEnabled(e.target.checked)} />
+                <div className="flex justify-between items-center">
+                    <label className="text-sm font-medium text-gray-300">Color</label>
+                    <input type="color" value={props.scannerColor} onChange={e => props.setScannerColor(e.target.value)} className="w-8 h-8 p-0 border-none rounded bg-transparent" />
+                </div>
+                <ControlSlider label="Speed" value={props.scannerSpeed} onChange={e => props.setScannerSpeed(parseFloat(e.target.value))} min={0.1} max={2} step={0.05} />
+                <ControlSlider label="Grid Density" value={props.scannerDensity} onChange={e => props.setScannerDensity(parseFloat(e.target.value))} min={5} max={100} step={1} />
+            </Section>
+
+            <Section title="Interactive Effects">
+              <Toggle label="Enable Effects" checked={props.interactiveEffectsEnabled} onChange={e => props.setInteractiveEffectsEnabled(e.target.checked)} />
+               <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Effect Type</label>
+                  <select value={props.interactiveEffectType} onChange={(e) => props.setInteractiveEffectType(e.target.value)} className="w-full bg-gray-900/50 text-white border border-white/20 rounded-md px-3 py-2 text-sm focus:ring-sky-500 focus:border-sky-500">
+                    {INTERACTIVE_EFFECT_LIST.map((name) => (<option key={name} value={name}>{name}</option>))}
+                  </select>
+                </div>
+              {props.interactiveEffectType === 'Symbol Explosion & Flame' && (
+                <>
+                  <div className="flex justify-between items-center">
+                      <label className="text-sm font-medium text-gray-300">Effect Color 1</label>
+                      <input type="color" value={props.effectColor1} onChange={e => props.setEffectColor1(e.target.value)} className="w-8 h-8 p-0 border-none rounded bg-transparent" />
+                  </div>
+                   <div className="flex justify-between items-center">
+                      <label className="text-sm font-medium text-gray-300">Effect Color 2</label>
+                      <input type="color" value={props.effectColor2} onChange={e => props.setEffectColor2(e.target.value)} className="w-8 h-8 p-0 border-none rounded bg-transparent" />
+                  </div>
+                </>
+              )}
+            </Section>
+
             <Section title="Lighting">
               <div className="flex justify-between items-center">
                   <label className="text-sm font-medium text-gray-300">Primary Color</label>
@@ -261,6 +372,9 @@ const Controls: React.FC<ControlsProps> = (props) => {
                 <ControlSlider label="Glitch" value={props.glitchIntensity} onChange={(e) => props.setGlitchIntensity(parseFloat(e.target.value))} min={0} max={0.1} step={0.001} />
                 <ControlSlider label="Scanline" value={props.scanlineIntensity} onChange={(e) => props.setScanlineIntensity(parseFloat(e.target.value))} min={0} max={1} step={0.01} />
                 <ControlSlider label="Dot Screen" value={props.dotScreenIntensity} onChange={(e) => props.setDotScreenIntensity(parseFloat(e.target.value))} min={0} max={1} step={0.01} />
+                <ControlSlider label="Pixelation" value={props.pixelation} onChange={(e) => props.setPixelation(parseInt(e.target.value, 10))} min={0} max={32} step={1} />
+                <ControlSlider label="Grid Scale" value={props.gridScale} onChange={(e) => props.setGridScale(parseFloat(e.target.value))} min={0} max={10} step={0.1} />
+                <ControlSlider label="Grid Line Width" value={props.gridLineWidth} onChange={(e) => props.setGridLineWidth(parseFloat(e.target.value))} min={0} max={1} step={0.01} />
             </Section>
 
              <div className="pt-4">

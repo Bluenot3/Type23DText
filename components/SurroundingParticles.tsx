@@ -16,7 +16,8 @@ const SurroundingParticles: React.FC<SurroundingParticlesProps> = ({ count, size
   const particles = useMemo(() => {
     const temp = [];
     for (let i = 0; i < count; i++) {
-      temp.push({ 
+      temp.push({
+        position: new Vector3(),
         t: Math.random() * 100, 
         speed: 0.01 + Math.random() / 200,
         xFactor: -spread + Math.random() * spread * 2,
@@ -36,7 +37,7 @@ const SurroundingParticles: React.FC<SurroundingParticlesProps> = ({ count, size
   const resetParticle = (particle: typeof particles[0]) => {
       particle.age = 0;
       particle.life = 1 + Math.random() * 2; // Lifespan of 1-3 seconds
-      dummy.position.set(0, 0, 0);
+      particle.position.set(0, 0, 0);
       
       // Give it a random velocity direction
       const phi = Math.random() * Math.PI * 2;
@@ -55,6 +56,7 @@ const SurroundingParticles: React.FC<SurroundingParticlesProps> = ({ count, size
     if (animation === 'Sparks') {
       particles.forEach(resetParticle);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animation, count, speed]);
 
 
@@ -71,10 +73,12 @@ const SurroundingParticles: React.FC<SurroundingParticlesProps> = ({ count, size
         particle.velocity.y -= gravity * delta;
         
         // Update position
-        dummy.position.addScaledVector(particle.velocity, delta);
+        particle.position.addScaledVector(particle.velocity, delta);
         
         // Increment age
         particle.age += delta;
+
+        dummy.position.copy(particle.position);
 
       } else {
         let { t, speed, xFactor, yFactor, zFactor } = particle;

@@ -1,5 +1,5 @@
 {
-  "name": "TYPE TO CRYSTAL 3D TEXT",
+  "name": "ZAI WORLD BACKGROUND",
   "description": "An interactive 3D application that renders text as translucent crystalline sculptures. Users can adjust parameters like index of refraction, facet density, and procedural texture density, enhanced with post-processing effects like bloom and chromatic aberration.",
   "requestFramePermissions": []
 }
