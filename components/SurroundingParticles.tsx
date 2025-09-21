@@ -1,3 +1,6 @@
+// FIX: Add a triple-slash directive to help TypeScript resolve React Three Fiber's custom JSX elements.
+/// <reference types="@react-three/fiber" />
+
 import React, { useMemo, useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Instances } from '@react-three/drei';

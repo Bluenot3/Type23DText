@@ -1,3 +1,5 @@
+// FIX: Add a triple-slash directive to help TypeScript resolve React Three Fiber's custom JSX elements.
+/// <reference types="@react-three/fiber" />
 
 import React, { useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
@@ -99,8 +101,9 @@ const Scene = React.forwardRef<Group, SceneProps>(({
     setIsZoomEnabled(prev => {
         const nextState = !prev;
         if (!nextState && controlsRef.current) {
-            // FIX: Pass undefined to reset() to satisfy an incorrect type definition.
-            controlsRef.current.reset(undefined);
+            // FIX: The reset method on OrbitControls does not take any arguments.
+            // The previous code was likely based on an incorrect type definition or a misunderstanding.
+            controlsRef.current.reset();
         }
         
         setIndicatorText(nextState ? 'Zoom Enabled' : 'Zoom Disabled & View Reset');

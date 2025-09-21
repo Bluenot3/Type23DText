@@ -138,8 +138,8 @@ const App: React.FC = () => {
   // Post-processing effects
   const [bloomIntensity, setBloomIntensity] = useState<number>(0.7);
   const [chromaticAberrationOffset, setChromaticAberrationOffset] = useState<number>(0.001);
-  const [vignetteDarkness, setVignetteDarkness] = useState<number>(1.1);
-  const [godRaysIntensity, setGodRaysIntensity] = useState<number>(0.3);
+  const [vignetteDarkness, setVignetteDarkness] = useState<number>(0.660);
+  const [godRaysIntensity, setGodRaysIntensity] = useState<number>(0.790);
   const [noiseIntensity, setNoiseIntensity] = useState<number>(0.05);
   const [dofIntensity, setDofIntensity] = useState<number>(0.1);
   const [glitchIntensity, setGlitchIntensity] = useState<number>(0.0);
