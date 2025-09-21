@@ -90,7 +90,7 @@ const Scene = React.forwardRef<Group, SceneProps>(({
   interactiveEffectsEnabled, interactiveEffectType, effectColor1, effectColor2
 }, ref) => {
   const godRaysLightSourceRef = useRef<Mesh>(null!);
-  const controlsRef = useRef<React.ElementRef<typeof OrbitControls>>(null!);
+  const controlsRef = useRef<any>(null!);
   const [isZoomEnabled, setIsZoomEnabled] = useState(false);
   const [indicatorText, setIndicatorText] = useState('');
   const indicatorTimeoutRef = useRef<number>();
@@ -99,9 +99,8 @@ const Scene = React.forwardRef<Group, SceneProps>(({
     setIsZoomEnabled(prev => {
         const nextState = !prev;
         if (!nextState && controlsRef.current) {
-            // FIX: Cast to 'any' to bypass a potential type definition issue.
-            // The 'reset' method on OrbitControls should not require any arguments.
-            (controlsRef.current as any).reset();
+            // FIX: Pass undefined to reset() to satisfy an incorrect type definition.
+            controlsRef.current.reset(undefined);
         }
         
         setIndicatorText(nextState ? 'Zoom Enabled' : 'Zoom Disabled & View Reset');

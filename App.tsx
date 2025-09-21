@@ -1,5 +1,4 @@
-
-import React, { useState, Suspense, useRef } from 'react';
+import React, { useState, Suspense, useRef, useEffect } from 'react';
 import Scene from './components/Scene';
 import Controls from './components/Controls';
 import ExportPage from './components/ExportPage';
@@ -49,10 +48,24 @@ export const MATERIAL_PRESETS = {
   'Holographic': { color: '#ff00ff', roughness: 0.0, metalness: 0.5, thickness: 1.0, ior: 2.4, materialDispersion: 0.8, sheenEnabled: true, sheenColor: '#00ffff', sheenRoughness: 0.2 },
 };
 
+const hslToHex = (h: number, s: number, l: number): string => {
+  l /= 100;
+  const a = s * Math.min(l, 1 - l) / 100;
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
 const App: React.FC = () => {
   // Page state
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const sceneRef = useRef<Group>(null!);
+  
+  // Automation state
+  const [autoRunEnabled, setAutoRunEnabled] = useState<boolean>(false);
 
   // Text, Font, Geometry
   const [text, setText] = useState<string>('ZEN');
@@ -165,6 +178,176 @@ const App: React.FC = () => {
       setTextureGlyphSet(glyphs);
     }
   };
+  
+  const autoRunState = useRef({
+    lastSwitchTime: 0,
+    animationIndex: 0,
+    materialPresetIndex: 0,
+    particleAnimationIndex: 0,
+    envPresetIndex: 0,
+    interactiveEffectIndex: 0,
+    animationFrameId: 0,
+    typingState: 'TYPING' as 'TYPING' | 'PAUSED' | 'DELETING',
+    textPresetIndex: 0,
+    textSubPartIndex: 0,
+    lastCharTime: 0,
+  });
+
+  useEffect(() => {
+    if (!autoRunEnabled) {
+      if (autoRunState.current.animationFrameId) {
+        cancelAnimationFrame(autoRunState.current.animationFrameId);
+        autoRunState.current.animationFrameId = 0;
+      }
+      return;
+    }
+
+    const presetCycleInterval = 10000; // 10 seconds
+
+    const textPresets: (string | string[])[] = [
+        'ZEN',
+        'AI',
+        ['AI', 'Pioneer', 'Program'],
+        ['1st AI', 'Literacy Program', 'In US History']
+    ];
+
+    const otherPresetKeys = {
+      animation: ANIMATION_LIST,
+      materialPreset: Object.keys(MATERIAL_PRESETS),
+      particleAnimation: PARTICLE_ANIMATION_LIST,
+      envPreset: ENV_LIST,
+      interactiveEffectType: INTERACTIVE_EFFECT_LIST,
+    };
+
+    const autoRunLoop = (time: number) => {
+      const elapsedTime = time / 1000; // time in seconds
+
+      if (time - autoRunState.current.lastSwitchTime > presetCycleInterval) {
+        autoRunState.current.lastSwitchTime = time;
+
+        const next = (key: 'animation' | 'materialPreset' | 'particleAnimation' | 'envPreset' | 'interactiveEffect', list: readonly any[]) => {
+          const currentIndexName = `${key}Index` as keyof typeof autoRunState.current;
+          const nextIndex = ((autoRunState.current[currentIndexName] as number) + 1) % list.length;
+          (autoRunState.current as any)[currentIndexName] = nextIndex;
+          return list[nextIndex];
+        };
+        
+        setAnimation(next('animation', otherPresetKeys.animation));
+        handleMaterialPresetChange(next('materialPreset', otherPresetKeys.materialPreset));
+        setParticleAnimation(next('particleAnimation', otherPresetKeys.particleAnimation));
+        setEnvPreset(next('envPreset', otherPresetKeys.envPreset));
+        setInteractiveEffectType(next('interactiveEffect', otherPresetKeys.interactiveEffectType));
+      }
+
+      const mapSin = (val: number, min: number, max: number) => ((val + 1) / 2) * (max - min) + min;
+      
+      setTextHeight(mapSin(Math.sin(elapsedTime * 0.1), 0.2, 1.5));
+      setBevelThickness(mapSin(Math.sin(elapsedTime * 0.15), 0, 0.25));
+      setBevelSize(mapSin(Math.sin(elapsedTime * 0.2), 0, 0.25));
+      setFacetDensity(Math.round(mapSin(Math.sin(elapsedTime * 0.25), 3, 20)));
+      setParticleSpread(mapSin(Math.sin(elapsedTime * 0.3), 2, 15));
+      setBloomIntensity(mapSin(Math.sin(elapsedTime * 0.12), 0.2, 1.8));
+      setChromaticAberrationOffset(mapSin(Math.sin(elapsedTime * 0.18), 0, 0.004));
+
+      if (materialPreset === 'Custom') {
+        setIor(mapSin(Math.sin(elapsedTime * 0.35), 1.0, 2.4));
+        setRoughness(mapSin(Math.sin(elapsedTime * 0.4), 0, 1));
+        setMetalness(mapSin(Math.sin(elapsedTime * 0.08), 0, 1));
+        setThickness(mapSin(Math.sin(elapsedTime * 0.1), 0.5, 4));
+        setMaterialDispersion(mapSin(Math.sin(elapsedTime * 0.22), 0, 1));
+      }
+      
+      const hue = (elapsedTime * 20) % 360;
+      setLight1Color(hslToHex((hue + 120) % 360, 80, 60));
+      setLight2Color(hslToHex((hue + 240) % 360, 80, 60));
+      setScannerColor(hslToHex(hue, 100, 50));
+      if (materialPreset === 'Custom') {
+          setColor(hslToHex((hue + 60) % 360, 90, 55));
+          setSheenColor(hslToHex((hue + 200) % 360, 90, 75));
+      }
+      
+      // --- Text Typing Animation Logic ---
+      const typingSpeed = 150; // ms per character
+      const deleteSpeed = 100; // ms per character
+      const pauseDuration = 6500; // 6.5 seconds
+
+      const { typingState, textPresetIndex, textSubPartIndex, lastCharTime } = autoRunState.current;
+      const currentPreset = textPresets[textPresetIndex];
+
+      let currentTargetText = '';
+
+      if (typeof currentPreset === 'string') {
+          currentTargetText = currentPreset;
+      } else { // It's an array for additive typing
+          currentTargetText = currentPreset.slice(0, textSubPartIndex + 1).join(' ');
+      }
+      
+      switch (typingState) {
+        case 'TYPING':
+          if (time - lastCharTime > typingSpeed) {
+            setText(currentText => {
+              if (currentText.length < currentTargetText.length) {
+                autoRunState.current.lastCharTime = time;
+                return currentTargetText.substring(0, currentText.length + 1);
+              } else {
+                autoRunState.current.typingState = 'PAUSED';
+                autoRunState.current.lastCharTime = time;
+                return currentText;
+              }
+            });
+          }
+          break;
+        case 'PAUSED':
+          if (time - lastCharTime > pauseDuration) {
+            if (typeof currentPreset === 'string') {
+                autoRunState.current.typingState = 'DELETING';
+            } else {
+                if (textSubPartIndex < currentPreset.length - 1) {
+                    autoRunState.current.textSubPartIndex++;
+                    autoRunState.current.typingState = 'TYPING';
+                } else {
+                    autoRunState.current.typingState = 'DELETING';
+                }
+            }
+            autoRunState.current.lastCharTime = time;
+          }
+          break;
+        case 'DELETING':
+          if (time - lastCharTime > deleteSpeed) {
+            setText(currentText => {
+              if (currentText.length > 0) {
+                autoRunState.current.lastCharTime = time;
+                return currentText.substring(0, currentText.length - 1);
+              } else {
+                autoRunState.current.textPresetIndex = (textPresetIndex + 1) % textPresets.length;
+                autoRunState.current.textSubPartIndex = 0; // Reset for the next preset
+                autoRunState.current.typingState = 'TYPING';
+                autoRunState.current.lastCharTime = time;
+                return ''; // Ensure text is empty
+              }
+            });
+          }
+          break;
+      }
+
+
+      autoRunState.current.animationFrameId = requestAnimationFrame(autoRunLoop);
+    };
+
+    if (autoRunEnabled) {
+      setText(''); // Clear text to begin typing animation
+      autoRunState.current.lastSwitchTime = performance.now();
+      autoRunState.current.lastCharTime = performance.now();
+      autoRunState.current.animationFrameId = requestAnimationFrame(autoRunLoop);
+    }
+
+    return () => {
+      if (autoRunState.current.animationFrameId) {
+        cancelAnimationFrame(autoRunState.current.animationFrameId);
+        autoRunState.current.animationFrameId = 0;
+      }
+    };
+  }, [autoRunEnabled, materialPreset]);
 
   const settings = {
     text, font, textHeight, bevelThickness, bevelSize, animation, materialPreset,
@@ -186,7 +369,6 @@ const App: React.FC = () => {
   return (
     <main className="relative w-screen h-screen antialiased">
       {isExporting ? (
-        // FIX: Removed the `sceneRef` prop as it is not accepted by `ExportPage`.
         <ExportPage 
           settings={settings}
           onBack={() => setIsExporting(false)}
@@ -268,6 +450,8 @@ const App: React.FC = () => {
             setInteractiveEffectType={setInteractiveEffectType}
             setEffectColor1={setEffectColor1}
             setEffectColor2={setEffectColor2}
+            autoRunEnabled={autoRunEnabled}
+            setAutoRunEnabled={setAutoRunEnabled}
             onExport={() => setIsExporting(true)}
           />
         </>
