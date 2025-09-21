@@ -1,7 +1,7 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Environment } from '@react-three/drei';
+import { OrbitControls, Environment, Html } from '@react-three/drei';
 import CrystallineText from './CrystallineText';
 import Effects from './Effects';
 import SurroundingParticles from './SurroundingParticles';
@@ -90,6 +90,29 @@ const Scene = React.forwardRef<Group, SceneProps>(({
   interactiveEffectsEnabled, interactiveEffectType, effectColor1, effectColor2
 }, ref) => {
   const godRaysLightSourceRef = useRef<Mesh>(null!);
+  const controlsRef = useRef<React.ElementRef<typeof OrbitControls>>(null!);
+  const [isZoomEnabled, setIsZoomEnabled] = useState(false);
+  const [indicatorText, setIndicatorText] = useState('');
+  const indicatorTimeoutRef = useRef<number>();
+
+  const handleDoubleClick = () => {
+    setIsZoomEnabled(prev => {
+        const nextState = !prev;
+        if (!nextState && controlsRef.current) {
+            // FIX: Cast to 'any' to bypass a potential type definition issue.
+            // The 'reset' method on OrbitControls should not require any arguments.
+            (controlsRef.current as any).reset();
+        }
+        
+        setIndicatorText(nextState ? 'Zoom Enabled' : 'Zoom Disabled & View Reset');
+        window.clearTimeout(indicatorTimeoutRef.current);
+        indicatorTimeoutRef.current = window.setTimeout(() => {
+            setIndicatorText('');
+        }, 2000);
+
+        return nextState;
+    });
+  };
 
   return (
     <Canvas
@@ -97,8 +120,28 @@ const Scene = React.forwardRef<Group, SceneProps>(({
       gl={{ antialias: false, preserveDrawingBuffer: true }}
       dpr={[1, 2]}
       camera={{ position: [0, 0, 8], fov: 50 }}
+      onDoubleClick={handleDoubleClick}
     >
       <color attach="background" args={['#101015']} />
+
+      {indicatorText && (
+        <Html fullscreen style={{ pointerEvents: 'none', zIndex: 100 }}>
+            <div style={{
+                position: 'absolute',
+                top: '20px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                padding: '8px 16px',
+                background: 'rgba(0, 0, 0, 0.7)',
+                color: 'white',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontFamily: 'sans-serif',
+            }}>
+                {indicatorText}
+            </div>
+        </Html>
+      )}
       
       {/* Lights */}
       <ambientLight intensity={0.5} />
@@ -210,9 +253,11 @@ const Scene = React.forwardRef<Group, SceneProps>(({
       />
       
       <OrbitControls 
+        ref={controlsRef}
         minDistance={3}
         maxDistance={20}
         enablePan={false}
+        enableZoom={isZoomEnabled}
       />
     </Canvas>
   );
