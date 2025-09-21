@@ -1,29 +1,26 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Crystal Text 3D</title>
     <script src="https://cdn.tailwindcss.com"></script>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.1.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
-    "react/": "https://aistudiocdn.com/react@^19.1.1/",
-    "@react-three/fiber": "https://aistudiocdn.com/@react-three/fiber@^9.3.0",
-    "@react-three/drei": "https://aistudiocdn.com/@react-three/drei@^10.7.4",
-    "three": "https://aistudiocdn.com/three@^0.179.1",
-    "@react-three/postprocessing": "https://aistudiocdn.com/@react-three/postprocessing@^3.0.4",
-    "postprocessing": "https://aistudiocdn.com/postprocessing@^6.37.7"
-  }
-}
-</script>
-</head>
+    <style>
+      html, body, #root {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+      }
+      #root {
+        position: fixed;
+        inset: 0;
+      }
+    </style>
+  </head>
   <body class="bg-gray-900">
     <div id="root"></div>
+    <!-- ⚠️ Note: /index.tsx must be compiled to JS to work on GitHub Pages -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
