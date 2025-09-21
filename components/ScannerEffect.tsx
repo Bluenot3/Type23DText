@@ -22,59 +22,59 @@ const fragmentShader = `
     return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
   }
 
-  // 2D Noise function for liquid/foggy effects
-  float noise (vec2 st) {
-    vec2 i = floor(st);
-    vec2 f = fract(st);
-
-    float a = random(i);
-    float b = random(i + vec2(1.0, 0.0));
-    float c = random(i + vec2(0.0, 1.0));
-    float d = random(i + vec2(1.0, 1.0));
-
-    // Smooth interpolation
-    vec2 u = f*f*(3.0-2.0*f);
-    return mix(a, b, u.x) + (c - a)* u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
-  }
-
+  // Generates a grid pattern
   float grid(vec2 st, float res){
     vec2 grid = fract(st*res);
     // Make grid lines thin
     return (step(grid.x, 0.02) + step(grid.y, 0.02));
   }
 
+  // Generates a crystalline pattern with moving glints
+  float crystal_pattern(vec2 st, float time) {
+    // Animate the pattern itself slowly
+    st += time * 0.1;
+    st *= 18.0; // Scale up the pattern for more facets
+    vec2 i_st = floor(st);
+    
+    // Get a random value for each cell to give it a base brightness
+    float cell_random = random(i_st);
+    
+    // Create moving diagonal lines that 'glint'
+    float moving_lines = fract(st.x + st.y + time * 2.0);
+    float glint = pow(1.0 - moving_lines, 8.0) * 0.5;
+
+    // Combine a base cell brightness with the glints
+    return cell_random * 0.2 + glint;
+  }
+
+
   void main() {
-    // Oscillating scanner position from left to right, going off-screen
+    // Oscillating scanner position from left to right
     float scannerX = sin(uTime) * 0.75 + 0.5;
 
     // --- Grid ---
     float gridVal = grid(vUv, uDensity);
-    vec3 gridColor = uColor * gridVal * 0.15; // Grid remains blue, slightly brighter
+    vec3 gridColor = uColor * gridVal * 0.15;
 
-    // --- Liquid Glass Slider ---
-    // Make the edges wavy/liquid using noise
-    float liquidEdgeOffset = noise(vec2(vUv.y * 8.0, uTime * 0.5)) * 0.1 - 0.05;
+    // --- Crystal Tile Slider ---
     float scannerWidth = 0.1;
-    float dist = abs(vUv.x - (scannerX + liquidEdgeOffset));
+    // Use a sharp edge for a "tile"
+    float dist = abs(vUv.x - scannerX);
 
-    // Create the main slider shape (mask)
-    float sliderMask = 1.0 - smoothstep(scannerWidth * 0.4, scannerWidth * 0.5, dist);
+    // Create the main tile shape (mask) with a soft falloff
+    float sliderMask = 1.0 - smoothstep(scannerWidth * 0.5, scannerWidth * 0.5 + 0.01, dist);
 
-    // Foggy/Misty interior using another layer of noise
-    float fogNoise = noise(vUv * vec2(10.0, 30.0) + vec2(0.0, uTime * -2.0));
-    float fog = sliderMask * (fogNoise * 0.2 + 0.1);
+    // Generate the crystalline texture within the tile
+    float crystalNoise = crystal_pattern(vUv * vec2(1.0, 2.5), uTime); // Stretch UVs vertically for better effect
 
-    // Reflective/Glassy highlights on the edges
-    float highlight = pow(1.0 - smoothstep(0.0, scannerWidth * 0.5, dist), 10.0);
-    vec3 highlightColor = vec3(1.0) * highlight * sliderMask * 0.8;
-
-    // Final slider visuals (color is from highlights, alpha is from fog and highlights)
-    vec3 sliderFinalColor = highlightColor;
-    float sliderAlpha = fog + (highlight * 0.3);
+    // The color and alpha of the crystal effect
+    // We want it to be subtle, mostly transparent but visible
+    float crystalAlpha = sliderMask * crystalNoise * 0.4; // subtle alpha
+    vec3 crystalColor = vec3(0.8, 0.9, 1.0) * crystalAlpha; // faint cool white color
 
     // --- Combine ---
-    vec3 finalColor = gridColor + sliderFinalColor;
-    float finalAlpha = max(gridVal * 0.1, sliderAlpha);
+    vec3 finalColor = gridColor + crystalColor;
+    float finalAlpha = max(gridVal * 0.1, crystalAlpha);
 
     gl_FragColor = vec4(finalColor, finalAlpha);
   }
